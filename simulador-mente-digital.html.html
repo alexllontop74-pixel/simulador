@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Mente Digital · Simulador 3D de Equilibrio Cognitivo y Bienestar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* ============ PALETA Y BASE (Verde pastel & Amarillo pastel sobre fondo oscuro) ============ */
+:root{
+  --bg0:#070d11; --bg1:#0b141a; --surface:#101d24; --surface2:#162731; --line:#233d4b;
+  --ink:#eef7f4; --muted:#97b5ae;
+  --mint:#86efac; --mint2:#6ee7b7; --lemon:#fde68a; --amber:#fcd34d;
+  --coral:#fda4af; --danger:#fb7185; --sky:#7dd3fc; --lavender:#c4b5fd; --peach:#fdba74;
+  --grad-mint:linear-gradient(135deg,#86efac,#34d399);
+  --grad-lemon:linear-gradient(135deg,#fde68a,#f59e0b);
+  --grad-duo:linear-gradient(135deg,#86efac,#fde68a);
+  --font-d:'Chakra Petch',system-ui,sans-serif; --font-b:'Inter',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--font-b); background:var(--bg0); color:var(--ink);
+  overflow:hidden; font-size:14px; -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6ee7b7,#fde68a);border-radius:8px;border:2px solid var(--bg1)}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#a7f3d0,#fef08a)}
+*{scrollbar-width:thin;scrollbar-color:#6ee7b7 var(--bg1)}
+
+#app{display:grid;grid-template-columns:1fr 342px;grid-template-rows:60px 1fr;height:100vh;height:100dvh}
+
+/* ============ CABECERA ============ */
+header{
+  grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 18px;
+  background:linear-gradient(90deg,#0b171d,#0c151c 55%,#171811);
+  border-bottom:1px solid var(--line);position:relative;z-index:30;
+  animation:dropIn .6s cubic-bezier(.2,.9,.3,1) both;
+}
+header::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  background:linear-gradient(90deg,var(--mint),var(--sky) 35%,var(--lemon) 72%,var(--coral));opacity:.9}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand svg{flex:none}
+.brand .core-pulse{animation:corePulse 2.4s ease-in-out infinite;transform-origin:17px 17px}
+@keyframes corePulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.13);opacity:1}}
+.brand h1{font-family:var(--font-d);font-size:18.5px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+.brand h1 em{font-style:normal;color:var(--mint)}
+.brand h1 span{color:var(--lemon)}
+.brand p{font-size:11px;color:var(--muted);white-space:nowrap}
+.cycle-chip{font-family:var(--font-d);font-size:11px;color:var(--lemon);border:1px solid #4a4526;
+  background:#181a12;padding:4px 11px;border-radius:99px;white-space:nowrap}
+header .spacer{flex:1}
+.hbtn{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--line);
+  border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:600;cursor:pointer;transition:.18s}
+.hbtn:hover{border-color:var(--mint);transform:translateY(-1px);box-shadow:0 4px 16px #86efac2b}
+.hbtn.off{color:var(--muted)}
+.hbtn.off .on-ic{display:none}.hbtn:not(.off) .off-ic{display:none}
+.hbtn svg{width:16px;height:16px}
+
+/* ============ ESCENARIO 3D ============ */
+#stage{position:relative;overflow:hidden;background:var(--bg0)}
+#viewport{position:absolute;inset:0}
+#viewport canvas{display:block;width:100%;height:100%}
+#grain{position:absolute;inset:0;pointer-events:none;opacity:.045;z-index:3;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/></filter><rect width="160" height="160" filter="url(%23n)" opacity="0.6"/></svg>')}
+#vignette{position:absolute;inset:0;pointer-events:none;z-index:3;
+  background:radial-gradient(ellipse at 50% 42%,transparent 52%,rgba(4,9,12,.58) 100%)}
+
+/* Etiquetas de piezas */
+#labelsLayer{position:absolute;inset:0;z-index:5;pointer-events:none}
+#leaderSvg{position:absolute;inset:0;width:100%;height:100%}
+.pill{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;
+  font-family:var(--font-d);font-size:11.5px;font-weight:600;letter-spacing:.3px;white-space:nowrap;
+  background:rgba(10,19,24,.9);border:1px solid var(--pc,#86efac);color:var(--ink);
+  padding:3px 9px 3px 7px;border-radius:99px;display:flex;align-items:center;gap:6px;
+  box-shadow:0 2px 10px rgba(0,0,0,.5);transition:box-shadow .2s,background .2s;backdrop-filter:blur(4px)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--pc);box-shadow:0 0 6px var(--pc);flex:none}
+.pill:hover,.pill.active{background:#152933;box-shadow:0 0 0 2px var(--pc),0 0 18px var(--pc)}
+.pill.active{font-weight:700}
+
+/* Insignia de fase actual */
+#phaseBadge{position:absolute;top:14px;left:14px;z-index:6;display:flex;align-items:center;gap:12px;
+  background:rgba(10,19,24,.85);border:1px solid var(--line);border-left:4px solid var(--sc,var(--mint));
+  border-radius:14px;padding:10px 16px 10px 12px;backdrop-filter:blur(8px);
+  box-shadow:0 6px 24px rgba(0,0,0,.45),0 0 24px color-mix(in srgb,var(--sc,var(--mint)) 22%,transparent);
+  animation:fadeUp .7s .3s cubic-bezier(.2,.9,.3,1) both}
+#phaseBadge .num{font-family:var(--font-d);font-size:25px;font-weight:700;width:44px;height:44px;flex:none;
+  display:grid;place-items:center;border-radius:12px;background:var(--sc,var(--mint));color:#071216}
+#phaseBadge .name{font-family:var(--font-d);font-size:17px;font-weight:700;letter-spacing:.7px;color:var(--sc,var(--mint));display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+#phaseBadge .sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+#phaseBadge .state-tag{font-family:var(--font-d);font-size:10px;font-weight:700;color:#071216;background:var(--mint);
+  padding:2px 7px;border-radius:6px}
+#phaseBadge.pop{animation:pop .45s cubic-bezier(.2,.9,.3,1)}
+@keyframes pop{0%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+#hintChip{position:absolute;top:14px;right:14px;z-index:6;font-size:11.5px;color:var(--muted);
+  background:rgba(10,19,24,.78);border:1px solid var(--line);border-radius:99px;padding:7px 13px;
+  backdrop-filter:blur(6px);transition:opacity 1s;animation:fadeUp .7s .5s both}
+#hintChip b{color:var(--ink)}
+
+/* Ficha de componente */
+#infoCard{position:absolute;left:14px;bottom:124px;z-index:7;width:min(350px,calc(100% - 28px));
+  background:rgba(11,21,27,.94);border:1px solid var(--ic,#86efac);border-radius:14px;padding:14px 16px;
+  backdrop-filter:blur(10px);box-shadow:0 10px 34px rgba(0,0,0,.55),0 0 22px color-mix(in srgb,var(--ic,#86efac) 22%,transparent);
+  transform:translateY(12px);opacity:0;pointer-events:none;transition:.28s cubic-bezier(.2,.9,.3,1)}
+#infoCard.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#infoCard .eyebrow{font-size:9.5px;letter-spacing:2px;color:var(--ic,#86efac);font-weight:800;text-transform:uppercase}
+#infoCard h4{font-family:var(--font-d);font-size:17px;margin:3px 0 6px;display:flex;align-items:center;gap:8px}
+#infoCard h4 i{width:10px;height:10px;border-radius:50%;background:var(--ic);box-shadow:0 0 8px var(--ic)}
+#infoCard p{font-size:12.5px;line-height:1.55;color:#cfe2de}
+#infoCard .close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);
+  font-size:18px;cursor:pointer;line-height:1;padding:4px}
+#infoCard .close:hover{color:var(--ink)}
+
+/* Línea de tiempo del ciclo */
+#timeline{position:absolute;left:12px;right:12px;bottom:12px;z-index:6;
+  background:rgba(10,18,23,.85);border:1px solid var(--line);border-radius:14px;padding:10px 14px 8px;
+  backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.5);animation:fadeUp .7s .45s both}
+.tl-segs{display:flex;gap:5px;position:relative}
+.tl-seg{flex:1;background:none;border:none;cursor:pointer;text-align:left;padding:0 2px;min-width:0}
+.tl-seg .tl-name{font-family:var(--font-d);font-size:11px;font-weight:600;color:var(--muted);
+  display:flex;align-items:center;gap:5px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.2s}
+.tl-seg .tl-name i{font-style:normal;width:16px;height:16px;flex:none;display:grid;place-items:center;
+  border-radius:5px;background:#192c36;color:var(--muted);font-size:10px;transition:.2s}
+.tl-seg .tl-bar{display:block;height:9px;border-radius:6px;background:#14252e;overflow:hidden;border:1px solid #203946}
+.tl-seg .tl-fill{display:block;height:100%;background:var(--sc);transform-origin:left;transform:scaleX(0);border-radius:6px}
+.tl-seg.done .tl-fill{transform:scaleX(1);opacity:.38}
+.tl-seg.done .tl-name{color:#c0d8d2}
+.tl-seg.active .tl-name{color:var(--sc);text-shadow:0 0 12px var(--sc)}
+.tl-seg.active .tl-name i{background:var(--sc);color:#071216}
+.tl-seg.active .tl-bar{box-shadow:0 0 12px color-mix(in srgb,var(--sc) 55%,transparent)}
+.tl-seg:hover .tl-name{color:var(--ink)}
+#tlMarker{position:absolute;top:16px;bottom:-2px;width:2px;background:#fff;border-radius:2px;
+  box-shadow:0 0 8px #fff;pointer-events:none;left:0}
+#tlMarker::before{content:"";position:absolute;top:-5px;left:-3px;border:4px solid transparent;border-top-color:#fff}
+.tl-ticks{position:relative;height:13px;margin-top:3px;font-family:var(--font-d);font-size:8.5px;color:#688983}
+.tl-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.tl-read{display:flex;justify-content:space-between;gap:10px;font-family:var(--font-d);font-size:11px;
+  color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.tl-read b{color:var(--ink)}
+
+/* Cargador / error */
+#loader{position:absolute;inset:0;z-index:20;display:grid;place-items:center;
+  background:radial-gradient(ellipse at 30% 20%,#132933,#070d11 72%);transition:opacity .6s}
+#loader.done{opacity:0;pointer-events:none}
+.load-box{text-align:center}
+.load-box svg{margin-bottom:14px}
+.load-box .lp{animation:corePulse 1.1s ease-in-out infinite;transform-origin:32px 32px}
+.load-box h2{font-family:var(--font-d);font-size:18px;letter-spacing:1px}
+.load-box p{color:var(--muted);font-size:12px;margin-top:6px;max-width:330px;line-height:1.5}
+.load-bar{width:180px;height:4px;background:#14252e;border-radius:4px;margin:16px auto 0;overflow:hidden}
+.load-bar i{display:block;height:100%;width:40%;border-radius:4px;background:var(--grad-duo);animation:slide 1.1s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(280%)}}
+.load-box .btn{margin-top:16px}
+
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:15;transition:opacity .18s}
+#flash.on{opacity:.7}
+
+/* ============ PANEL DE CONTROL ============ */
+#panel{background:linear-gradient(180deg,#0c181f,#091217);border-left:1px solid var(--line);
+  overflow-y:auto;overflow-x:hidden;padding:16px 16px 24px;z-index:10;animation:slideIn .6s .15s cubic-bezier(.2,.9,.3,1) both}
+.sec{margin-bottom:20px}
+.sec-title{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:2.3px;text-transform:uppercase;
+  color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.sec-title::before{content:"";width:14px;height:3px;border-radius:2px;background:var(--grad-lemon)}
+.sec-title.mint::before{background:var(--grad-mint)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--surface2);
+  border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-size:12.5px;font-weight:600;
+  cursor:pointer;transition:.18s;user-select:none}
+.btn:hover{border-color:var(--mint);transform:translateY(-1px);box-shadow:0 5px 18px #86efac24}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn svg{width:15px;height:15px;flex:none}
+.btn-primary{background:linear-gradient(135deg,#183c36,#143138);border-color:#2d6a62}
+.btn-primary:hover{border-color:var(--mint);box-shadow:0 5px 20px #86efac3d}
+.btn-accent{background:var(--grad-duo);border-color:#fef08a;color:#081417;font-family:var(--font-d);
+  font-size:13.5px;font-weight:700;letter-spacing:.5px;padding:13px 12px}
+.btn-accent:hover{box-shadow:0 6px 24px #fde68a55;border-color:#fff}
+.btn-accent.armed{background:linear-gradient(135deg,#1d4b42,#163832);border-color:#5eead4;color:var(--ink)}
+.wide{width:100%}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rowcam{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.ctl-row{margin-top:12px}
+.ctl-lab{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:600;margin-bottom:7px}
+.ctl-lab output{font-family:var(--font-d);color:var(--mint);font-size:12.5px;font-variant-numeric:tabular-nums}
+.ctl-lab output.lemon{color:var(--lemon)}
+.ctl-lab output.coral{color:var(--coral)}
+.ctl-hint{font-size:10.5px;color:#6e8e88;margin-top:5px;line-height:1.4}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;outline:none;cursor:pointer;
+  background:linear-gradient(90deg,var(--rc,#86efac) var(--p,50%),#152730 var(--p,50%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:#fff;border:3px solid var(--rc,#86efac);box-shadow:0 0 10px var(--rc,#86efac);cursor:grab;transition:.15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--rc,#86efac);box-shadow:0 0 10px var(--rc,#86efac);cursor:grab}
+input[type=range]:focus-visible{box-shadow:0 0 0 3px #86efac55}
+
+/* Medidor de equilibrio en tiempo real */
+.meter-box{background:#0d1a21;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px}
+.meter-bar{height:8px;border-radius:99px;background:#14252e;overflow:hidden;border:1px solid #223c4a;margin:6px 0 4px}
+.meter-fill{height:100%;width:85%;border-radius:99px;background:linear-gradient(90deg,#fb7185,#fde68a,#86efac);transition:width .25s}
+.meter-scale{display:flex;justify-content:space-between;font-family:var(--font-d);font-size:9.5px;color:var(--muted)}
+
+.switch-row{display:flex;justify-content:space-between;align-items:center;padding:8px 2px;font-size:12.5px;font-weight:600;cursor:pointer}
+.switch-row small{display:block;font-weight:400;font-size:10.5px;color:#6e8e88}
+.switch{position:relative;width:42px;height:23px;flex:none}
+.switch input{position:absolute;opacity:0;inset:0;cursor:pointer;z-index:2}
+.switch i{position:absolute;inset:0;border-radius:99px;background:#172b35;border:1px solid var(--line);transition:.2s}
+.switch i::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;
+  background:#84a39d;transition:.2s cubic-bezier(.2,.9,.3,1)}
+.switch input:checked + i{background:color-mix(in srgb,var(--sw,#86efac) 30%,#11232b);border-color:var(--sw,#86efac)}
+.switch input:checked + i::after{left:21px;background:var(--sw,#86efac);box-shadow:0 0 10px var(--sw,#86efac)}
+.switch input:focus-visible + i{box-shadow:0 0 0 3px #86efac55}
+
+select{width:100%;background:var(--surface2);border:1px solid var(--line);color:var(--ink);border-radius:10px;
+  padding:9px 10px;font-size:12.5px;font-family:inherit;cursor:pointer;outline:none}
+select:hover{border-color:var(--mint)}
+
+/* Tarjeta de la fase actual */
+#phaseCard{background:linear-gradient(160deg,color-mix(in srgb,var(--sc,#86efac) 13%,#0e1d24),#0b151b);
+  border:1px solid color-mix(in srgb,var(--sc,#86efac) 45%,#233d4b);border-radius:14px;padding:13px 14px;transition:.3s}
+#phaseCard .sc-head{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+#phaseCard .sc-num{font-family:var(--font-d);font-size:20px;font-weight:700;width:34px;height:34px;flex:none;
+  display:grid;place-items:center;border-radius:9px;background:var(--sc,#86efac);color:#071216}
+#phaseCard h4{font-family:var(--font-d);font-size:15.5px;letter-spacing:.4px;color:var(--sc,#86efac)}
+#phaseCard .sc-sub{font-size:10px;color:var(--muted)}
+#phaseCard p{font-size:12.5px;line-height:1.55;color:#d2e5e0}
+#phaseCard .sc-tip{margin-top:9px;font-size:11px;line-height:1.45;color:var(--sc,#86efac);
+  background:rgba(7,14,18,.6);border-radius:9px;padding:7px 9px;border:1px dashed color-mix(in srgb,var(--sc,#86efac) 42%,transparent)}
+
+/* Leyenda de componentes */
+#legend{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.chip{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);
+  border-radius:9px;padding:7px 8px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s;text-align:left;min-width:0}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip i{width:8px;height:8px;flex:none;border-radius:50%;background:var(--pc);box-shadow:0 0 6px var(--pc)}
+.chip:hover{border-color:var(--pc);transform:translateY(-1px)}
+.chip.active{border-color:var(--pc);background:#152a34;box-shadow:0 0 12px color-mix(in srgb,var(--pc) 35%,transparent)}
+
+.keys{font-size:10.5px;color:#688983;line-height:1.7;margin-top:12px}
+.keys b{color:var(--muted);font-family:var(--font-d);background:#14252e;border:1px solid var(--line);
+  border-radius:5px;padding:1px 5px;font-size:9.5px}
+
+/* Avisos */
+#toasts{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{font-family:var(--font-d);font-size:12.5px;font-weight:600;background:rgba(12,24,31,.96);
+  border:1px solid var(--mint);border-radius:99px;padding:9px 18px;box-shadow:0 8px 26px rgba(0,0,0,.5),0 0 16px #86efac33;
+  animation:toastIn .3s cubic-bezier(.2,.9,.3,1),toastOut .3s 2.1s both}
+@keyframes toastIn{from{transform:translateY(14px);opacity:0}}
+@keyframes toastOut{to{transform:translateY(8px);opacity:0}}
+
+@keyframes fadeUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes dropIn{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:920px){
+  body{overflow:auto}
+  #app{grid-template-columns:1fr;grid-template-rows:56px 58vh auto;height:auto}
+  #stage{min-height:420px}
+  #panel{border-left:none;border-top:1px solid var(--line);max-height:none}
+  .brand p,.cycle-chip{display:none}
+  .brand h1{font-size:15.5px}
+  #phaseBadge{padding:7px 11px 7px 9px;gap:9px}
+  #phaseBadge .num{width:34px;height:34px;font-size:19px}
+  #phaseBadge .name{font-size:13.5px}
+  #hintChip{display:none}
+  .pill{font-size:10px;padding:2px 7px 2px 6px}
+  .tl-seg .tl-name{font-size:9.5px;gap:4px}
+  .tl-seg .tl-name i{width:13px;height:13px;font-size:8.5px}
+  .tl-read{font-size:9.5px}
+  #infoCard{bottom:108px}
+  #timeline{padding:8px 10px 6px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01s !important}
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= CABECERA ================= -->
+  <header>
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
+        <circle cx="17" cy="17" r="13" stroke="#86efac" stroke-width="1.8" stroke-dasharray="4 3"/>
+        <circle cx="17" cy="17" r="8.5" stroke="#fde68a" stroke-width="1.8"/>
+        <g class="core-pulse">
+          <circle cx="17" cy="17" r="4.2" fill="#86efac"/>
+          <circle cx="17" cy="17" r="1.8" fill="#070d11"/>
+        </g>
+        <path d="M17 2v3M17 29v3M2 17h3M29 17h3" stroke="#fde68a" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1>MENTE <em>DIGITAL</em> · <span>EQUILIBRIO IA</span></h1>
+        <p>Inteligencia Artificial Aplicada · Pensamiento autónomo y bienestar emocional</p>
+      </div>
+    </div>
+    <span class="cycle-chip">IA como apoyo · Criterio propio y descanso como eje</span>
+    <div class="spacer"></div>
+    <button class="hbtn" id="soundBtn" aria-label="Activar o silenciar sonido" aria-pressed="true">
+      <svg class="on-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5 6 9H2v6h4l5 4z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      <svg class="off-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5 6 9H2v6h4l5 4z" fill="currentColor" stroke="none"/><line x1="16" y1="9" x2="22" y2="15"/><line x1="22" y1="9" x2="16" y2="15"/></svg>
+      <span id="soundLabel">Sonido</span>
+    </button>
+    <button class="hbtn" id="fsBtn" aria-label="Pantalla completa">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    </button>
+  </header>
+
+  <!-- ================= ESCENA ================= -->
+  <main id="stage">
+    <div id="viewport"></div>
+    <div id="grain"></div><div id="vignette"></div>
+    <div id="labelsLayer"><svg id="leaderSvg"></svg></div>
+
+    <div id="phaseBadge">
+      <div class="num" id="badgeNum">1</div>
+      <div>
+        <div class="name"><span id="badgeNameText">PENSAR PRIMERO</span><span class="state-tag" id="stateTag">AUTONOMÍA ACTIVA</span></div>
+        <div class="sub" id="badgeSub">Fase 1 de 4 · Criterio propio antes de consultar</div>
+      </div>
+    </div>
+
+    <div id="hintChip">🖱️ <b>Arrastra</b> para girar · <b>Rueda</b> para zoom · <b>Toca un módulo</b> para explorar su función</div>
+
+    <div id="infoCard" role="dialog" aria-label="Información del elemento">
+      <button class="close" id="infoClose" aria-label="Cerrar">×</button>
+      <div class="eyebrow">Elemento de Mente Digital</div>
+      <h4><i></i><span id="infoName"></span></h4>
+      <p id="infoDesc"></p>
+    </div>
+
+    <div id="timeline">
+      <div class="tl-segs" id="tlSegs">
+        <button class="tl-seg" data-i="0" style="--sc:#86efac"><span class="tl-name"><i>1</i>Pensar primero</span><span class="tl-bar"><span class="tl-fill"></span></span></button>
+        <button class="tl-seg" data-i="1" style="--sc:#fde68a"><span class="tl-name"><i>2</i>Consultar con propósito</span><span class="tl-bar"><span class="tl-fill"></span></span></button>
+        <button class="tl-seg" data-i="2" style="--sc:#7dd3fc"><span class="tl-name"><i>3</i>Verificar y reflexionar</span><span class="tl-bar"><span class="tl-fill"></span></span></button>
+        <button class="tl-seg" data-i="3" style="--sc:#c4b5fd"><span class="tl-name"><i>4</i>Pausa y bienestar</span><span class="tl-bar"><span class="tl-fill"></span></span></button>
+        <div id="tlMarker"></div>
+      </div>
+      <div class="tl-ticks">
+        <span style="left:0%">Idea propia</span>
+        <span style="left:25%">Prompt crítico</span>
+        <span style="left:50%">Filtro de fuentes</span>
+        <span style="left:75%">Descanso</span>
+        <span style="left:100%">Equilibrio</span>
+      </div>
+      <div class="tl-read">
+        <span>Progreso del ciclo: <b id="progTxt">0%</b> · Estado: <b id="statusTxt">Equilibrado</b></span>
+        <span>Ritmo: <b id="paceTxt">12 ciclos/h</b> · Ciclos sanos: <b id="cyclesTxt">0</b> · Autonomía: <b id="autoTxt">88%</b></span>
+      </div>
+    </div>
+
+    <div id="flash"></div>
+    <div id="loader">
+      <div class="load-box" id="loadBox">
+        <svg width="64" height="64" viewBox="0 0 34 34" fill="none">
+          <circle cx="17" cy="17" r="13" stroke="#86efac" stroke-width="1.8" stroke-dasharray="4 3"/>
+          <circle cx="17" cy="17" r="8.5" stroke="#fde68a" stroke-width="1.8"/>
+          <g class="lp"><circle cx="17" cy="17" r="4.2" fill="#86efac"/></g>
+        </svg>
+        <h2>INICIANDO MENTE DIGITAL…</h2>
+        <p>Construyendo el ecosistema 3D de pensamiento autónomo, IA responsable y bienestar.</p>
+        <div class="load-bar"><i></i></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= PANEL ================= -->
+  <aside id="panel">
+    <div class="sec">
+      <h3 class="sec-title">Dinámica del sistema</h3>
+      <div class="row2">
+        <button class="btn btn-primary" id="playBtn">
+          <svg id="icPause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+          <svg id="icPlay" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M7 4.5v15l13-7.5z"/></svg>
+          <span id="playLabel">Pausar</span>
+        </button>
+        <button class="btn" id="stepBtn" title="Avanza exactamente a la siguiente fase del proceso">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 4.5v15l10-7.5z"/><rect x="17" y="4" width="3" height="16" rx="1"/></svg>
+          Siguiente fase
+        </button>
+      </div>
+      <div class="ctl-row">
+        <div class="ctl-lab"><span>Ritmo de estudio</span><output id="paceOut">12 ciclos/h</output></div>
+        <input type="range" id="paceSlider" min="4" max="36" step="2" value="12" style="--rc:#86efac" aria-label="Ritmo de estudio en ciclos por hora">
+      </div>
+      <div class="ctl-row">
+        <div class="ctl-lab"><span>Delegación en la IA (sobrecarga)</span><output class="lemon" id="depOut">25% (Uso consciente)</output></div>
+        <input type="range" id="depSlider" min="0" max="100" step="1" value="25" style="--rc:#fde68a" aria-label="Nivel de delegación en IA y falta de pausas">
+        <div class="ctl-hint">Sube este control para simular exceso de delegación en IA y falta de descanso: observa cómo se desequilibra el sistema.</div>
+      </div>
+      <div class="meter-box">
+        <div class="ctl-lab" style="margin-bottom:0"><span>Índice de equilibrio integral</span><output id="balOut">85%</output></div>
+        <div class="meter-bar"><div class="meter-fill" id="balFill"></div></div>
+        <div class="meter-scale"><span>Sobrecarga / Dependencia</span><span>Armonía cognitiva</span></div>
+      </div>
+      <div class="ctl-row">
+        <button class="btn btn-accent wide" id="explodeBtn" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 9V3m0 0-3 3m3-3 3 3M12 15v6m0 0-3-3m3 3 3-3M9 12H3m0 0 3-3m-3 3 3 3M15 12h6m0 0-3-3m3 3-3 3"/></svg>
+          <span id="explodeLabel">DESPIECE DE CAPAS</span>
+        </button>
+      </div>
+      <div class="ctl-row">
+        <div class="ctl-lab"><span>Separación de capas</span><output class="lemon" id="sepOut">0%</output></div>
+        <input type="range" id="sepSlider" min="0" max="100" step="1" value="0" style="--rc:#fde68a" aria-label="Separación de capas del despiece">
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3 class="sec-title mint">Fase actual</h3>
+      <div id="phaseCard">
+        <div class="sc-head">
+          <div class="sc-num" id="scNum">1</div>
+          <div><h4 id="scName" aria-live="polite">Pensar primero</h4><div class="sc-sub" id="scSub">0% – 25% · Activación del criterio propio</div></div>
+        </div>
+        <p id="scDesc"></p>
+        <div class="sc-tip" id="scTip"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3 class="sec-title mint">Visualización</h3>
+      <label class="switch-row"><span>Vista Rayos X / Transparencia<small>Permite ver el núcleo interno sin obstrucciones</small></span>
+        <span class="switch" style="--sw:#86efac"><input type="checkbox" id="xrayToggle" checked><i></i></span></label>
+      <label class="switch-row"><span>Etiquetas de elementos<small>Nombres sobre cada componente 3D</small></span>
+        <span class="switch" style="--sw:#fde68a"><input type="checkbox" id="labelsToggle" checked><i></i></span></label>
+      <label class="switch-row"><span>Giro automático<small>La cámara orbita suavemente</small></span>
+        <span class="switch" style="--sw:#c4b5fd"><input type="checkbox" id="rotToggle"><i></i></span></label>
+      <div class="ctl-row">
+        <div class="ctl-lab"><span>Calidad gráfica</span></div>
+        <select id="qualitySel" aria-label="Calidad gráfica">
+          <option value="alta">Alta (brillos y sombras)</option>
+          <option value="media" selected>Media (recomendada)</option>
+          <option value="baja">Baja (equipos lentos)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3 class="sec-title mint">Cámara</h3>
+      <div class="rowcam">
+        <button class="btn cam-btn" data-view="front">Frontal</button>
+        <button class="btn cam-btn" data-view="side">Lateral</button>
+        <button class="btn cam-btn" data-view="top">Superior</button>
+        <button class="btn cam-btn" data-view="iso">Isométrica</button>
+      </div>
+      <div class="row2" style="margin-top:8px">
+        <button class="btn" id="randomBtn">🎲 Vista sorpresa</button>
+        <button class="btn" id="centerBtn">⟳ Centrar</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3 class="sec-title">Componentes del sistema</h3>
+      <div id="legend"></div>
+      <div class="ctl-hint" style="margin-top:8px">Toca un componente (aquí o en la escena 3D) para leer su función.</div>
+    </div>
+
+    <div class="sec">
+      <h3 class="sec-title">Acciones</h3>
+      <div class="row2">
+        <button class="btn" id="resetBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          Reiniciar
+        </button>
+        <button class="btn btn-primary" id="shotBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h3l2-2h6l2 2h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></svg>
+          Captura PNG
+        </button>
+      </div>
+      <div class="keys">
+        Atajos: <b>Espacio</b> reproducir/pausar · <b>E</b> despiece · <b>→</b> siguiente fase ·
+        <b>C</b> rayos X · <b>L</b> etiquetas · <b>R</b> reiniciar
+      </div>
+    </div>
+  </aside>
+</div>
+<div id="toasts"></div>
+
+<script type="module">
+/* ============================================================
+   SIMULADOR 3D · MENTE DIGITAL (PENSAMIENTO AUTÓNOMO, IA Y BIENESTAR)
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const smooth=t=>t*t*(3-2*t);
+
+/* ---------- Datos educativos ---------- */
+const PHASES=[
+ {name:'Pensar primero',color:'#86efac',sub:'0% – 25% · Activación del criterio propio',motion:'el núcleo central irradia ideas propias',
+  desc:'Antes de abrir cualquier herramienta de IA, el estudiante formula su propia hipótesis, estructura sus ideas y define qué problema quiere resolver.',
+  tip:'👀 Observa: el núcleo de pensamiento crítico brilla en verde pastel y envía impulsos hacia la brújula de autonomía.'},
+ {name:'Consultar con propósito',color:'#fde68a',sub:'25% – 50% · Diálogo crítico con la IA',motion:'el módulo de IA aporta perspectivas sin sustituir el eje',
+  desc:'La inteligencia artificial actúa como copiloto para explorar ángulos nuevos, contrastar argumentos o desbloquear bloqueos creativos, manteniendo la autoría humana.',
+  tip:'👀 Observa: el flujo amarillo pastel conecta el módulo de consulta de IA con el núcleo, sin apagar su luz propia.'},
+ {name:'Verificar y reflexionar',color:'#7dd3fc',sub:'50% – 75% · Contraste de evidencia y sesgos',motion:'el filtro de verificación depura la información',
+  desc:'Toda respuesta generada pasa por el filtro de verificación de fuentes: se comprueban datos reales, se detectan posibles alucinaciones y se integra solo lo fundamentado.',
+  tip:'👀 Observa: las partículas atraviesan el prisma superior y se estabilizan antes de volver al criterio del estudiante.'},
+ {name:'Pausa y bienestar',color:'#c4b5fd',sub:'75% – 100% · Descanso, sueño y desconexión saludable',motion:'el escudo emocional y el anillo de hábitos armonizan el sistema',
+  desc:'El aprendizaje consolidado requiere pausas activas, sueño reparador y reducir la comparación social en redes. El descanso recarga la creatividad y estabiliza las emociones.',
+  tip:'👀 Observa: el escudo de bienestar emocional y el medidor de descanso pulsan en calma, restaurando el equilibrio total.'}
+];
+
+const PARTS={
+ nucleo_critico:{name:'Núcleo de pensamiento crítico',color:'#86efac',desc:'Centro cognitivo del estudiante. Representa la capacidad de analizar, cuestionar, crear ideas originales y tomar decisiones propias antes de delegar en algoritmos.'},
+ brujula_autonomia:{name:'Brújula de autonomía',color:'#fde68a',desc:'Orienta el aprendizaje hacia metas personales. Cuando el estudiante decide el rumbo, la IA es una herramienta; cuando la brújula se inclina por exceso de delegación, se pierde agencia.'},
+ escudo_bienestar:{name:'Escudo de bienestar emocional',color:'#6ee7b7',desc:'Cúpula protectora que amortigua la ansiedad académica y la fatiga digital. Se fortalece con pausas conscientes y se debilita ante la hiperconexión constante.'},
+ modulo_ia:{name:'Módulo de consulta de IA',color:'#fcd34d',desc:'Satélite de asistencia algorítmica. Ofrece borradores, síntesis y lluvia de ideas en segundos, pero carece de comprensión real y requiere guía ética.'},
+ filtro_fuentes:{name:'Filtro de verificación de fuentes',color:'#7dd3fc',desc:'Prisma superior que contrasta datos, citas y argumentos frente a fuentes primarias confiables para evitar sesgos o errores generados por la IA.'},
+ medidor_descanso:{name:'Medidor de descanso y sueño',color:'#c4b5fd',desc:'Columna energética que registra las horas de sueño y pausas cognitivas. Sin descanso suficiente, la memoria y la regulación emocional caen drásticamente.'},
+ indicador_comparacion:{name:'Indicador de comparación social',color:'#fda4af',desc:'Sensor lateral que alerta sobre la presión por métricas, productividad irreal o validación externa en entornos digitales. Mantenerlo bajo protege la autoestima.'},
+ anillo_habitos:{name:'Anillo de hábitos saludables',color:'#a7f3d0',desc:'Órbita base que sostiene rutinas sostenibles: hidratación, movimiento físico, límites de pantalla y espacios libres de tecnología.'}
+};
+const LEGEND_ORDER=['nucleo_critico','brujula_autonomia','escudo_bienestar','modulo_ia','filtro_fuentes','medidor_descanso','indicador_comparacion','anillo_habitos'];
+
+/* ---------- Estado global ---------- */
+const state={
+ progress:0, pace:12, playing:true, cycles:0,
+ dependency:0.25, balance:0.85,
+ explode:0, explodeTarget:0, wasPlaying:true,
+ xray:true, labels:true, autoRot:false, sound:true, quality:'media',
+ selected:null, hovered:null, stepMode:false
+};
+
+/* ---------- Avisos y error ---------- */
+function toast(msg){
+ const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+ $('#toasts').appendChild(t); setTimeout(()=>t.remove(),2500);
+}
+function fatal(msg){
+ $('#loadBox').innerHTML=`<div style="font-size:40px">⚠️</div><h2>NO SE PUDO INICIAR</h2>
+ <p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Reintentar</button>`;
+ $('#loader').classList.remove('done');
+}
+
+/* ============================================================
+   ARRANQUE (carga de librerías 3D)
+   ============================================================ */
+let THREE,OrbitControls,RoomEnvironment,EffectComposer,RenderPass,UnrealBloomPass,OutputPass;
+try{
+ THREE=await import('three');
+ ({OrbitControls}=await import('three/addons/controls/OrbitControls.js'));
+ ({RoomEnvironment}=await import('three/addons/environments/RoomEnvironment.js'));
+ ({EffectComposer}=await import('three/addons/postprocessing/EffectComposer.js'));
+ ({RenderPass}=await import('three/addons/postprocessing/RenderPass.js'));
+ ({UnrealBloomPass}=await import('three/addons/postprocessing/UnrealBloomPass.js'));
+ ({OutputPass}=await import('three/addons/postprocessing/OutputPass.js'));
+}catch(e){ fatal('No se pudieron cargar las librerías 3D. Este simulador necesita conexión a internet la primera vez. Revisa tu conexión y recarga la página.'); throw e; }
+
+try{ init(); }catch(e){ console.error(e); fatal('Tu navegador no pudo crear la escena 3D (WebGL). Prueba con Chrome, Edge o Firefox actualizados.'); throw e; }
+
+function init(){
+/* ============================================================
+   ESCENA, CÁMARA, LUCES
+   ============================================================ */
+const wrap=$('#viewport');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,preserveDrawingBuffer:true});
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+wrap.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0x070d11,22,52);
+
+/* Fondo degradado oscuro con brillos verde pastel y amarillo pastel */
+{
+ const c=document.createElement('canvas'); c.width=c.height=512; const g=c.getContext('2d');
+ const lin=g.createLinearGradient(0,0,0,512); lin.addColorStop(0,'#0b1920'); lin.addColorStop(.55,'#081116'); lin.addColorStop(1,'#070c10');
+ g.fillStyle=lin; g.fillRect(0,0,512,512);
+ let r=g.createRadialGradient(145,120,10,145,120,330); r.addColorStop(0,'rgba(134,239,172,0.18)'); r.addColorStop(1,'rgba(134,239,172,0)');
+ g.fillStyle=r; g.fillRect(0,0,512,512);
+ r=g.createRadialGradient(390,410,10,390,410,310); r.addColorStop(0,'rgba(253,230,138,0.15)'); r.addColorStop(1,'rgba(253,230,138,0)');
+ g.fillStyle=r; g.fillRect(0,0,512,512);
+ const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; scene.background=tex;
+}
+
+const camera=new THREE.PerspectiveCamera(44,1,0.1,120);
+camera.position.set(14,9,16);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=.07;
+controls.minDistance=4.2; controls.maxDistance=32;
+controls.minPolarAngle=.08; controls.maxPolarAngle=1.52;
+controls.target.set(0,2.2,0);
+controls.autoRotateSpeed=.65;
+
+/* Entorno para reflejos suaves */
+{
+ const pm=new THREE.PMREMGenerator(renderer);
+ scene.environment=pm.fromScene(new RoomEnvironment(),.04).texture; pm.dispose();
+}
+
+/* Iluminación dramática en tonos pastel */
+scene.add(new THREE.HemisphereLight(0xbefae0,0x1d1b12,.6));
+const key=new THREE.DirectionalLight(0xfffbeb,1.65);
+key.position.set(6,10,7); key.castShadow=true;
+key.shadow.mapSize.set(1024,1024);
+key.shadow.camera.left=key.shadow.camera.bottom=-9;
+key.shadow.camera.right=key.shadow.camera.top=9;
+key.shadow.camera.near=1; key.shadow.camera.far=32; key.shadow.bias=-.0005;
+scene.add(key);
+const rim=new THREE.DirectionalLight(0x86efac,1.25); rim.position.set(-7,5,-6); scene.add(rim);
+const fill=new THREE.PointLight(0xfde68a,.7,24); fill.position.set(5,2,-5); scene.add(fill);
+const eventLight=new THREE.PointLight(0x86efac,2.2,12,1.8); eventLight.position.set(0,2.3,0); scene.add(eventLight);
+
+/* Post-procesado (bloom sutil para el núcleo y los flujos) */
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(800,600),.45,.42,.78);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   MATERIALES Y UTILIDADES
+   ============================================================ */
+const allMats=[],xrayMats=[];
+function M(opts,isShell=false){
+ const m=new THREE.MeshStandardMaterial(Object.assign({envMapIntensity:.65},opts));
+ m.userData.baseEmissive=m.emissive.getHex();
+ m.userData.baseEI=m.emissiveIntensity;
+ m.userData.baseOpacity=m.opacity??1;
+ allMats.push(m);
+ if(isShell) xrayMats.push(m);
+ return m;
+}
+function mesh(geo,mat,parent,x=0,y=0,z=0,shadow=true){
+ const o=new THREE.Mesh(geo,mat); o.position.set(x,y,z);
+ o.castShadow=shadow; parent.add(o); return o;
+}
+const softTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
+ const r=g.createRadialGradient(32,32,0,32,32,30); r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.45,'rgba(255,255,255,.55)'); r.addColorStop(1,'rgba(255,255,255,0)');
+ g.fillStyle=r; g.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
+
+/* Registro de componentes para despiece */
+const systemGroup=new THREE.Group(); scene.add(systemGroup);
+const parts=[];
+function part(id,base,offset){
+ const g=new THREE.Group(); g.position.copy(base); g.userData.partId=id; systemGroup.add(g);
+ const rec={id,group:g,base:base.clone(),offset:offset.clone(),mats:[]};
+ parts.push(rec); return rec;
+}
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+/* ============================================================
+   CONSTRUCCIÓN DEL ECOSISTEMA 3D "MENTE DIGITAL"
+   ============================================================ */
+
+/* --- 1. Núcleo de pensamiento crítico (esfera facetada + aros sinápticos) --- */
+const coreRec=part('nucleo_critico',V(0,2.3,0),V(0,0,0));
+const coreRot=new THREE.Group(); coreRec.group.add(coreRot);
+let coreMat,coreHalo;
+{
+ coreMat=M({color:0x86efac,emissive:0x34d399,emissiveIntensity:.55,metalness:.25,roughness:.25});
+ mesh(new THREE.IcosahedronGeometry(.78,2),coreMat,coreRot);
+ const wireM=M({color:0xfef08a,emissive:0xfde68a,emissiveIntensity:.35,wireframe:true,transparent:true,opacity:.45});
+ mesh(new THREE.IcosahedronGeometry(.94,1),wireM,coreRot,0,0,0,false);
+ const ringM=M({color:0xa7f3d0,emissive:0x6ee7b7,emissiveIntensity:.4,metalness:.6,roughness:.3});
+ const r1=mesh(new THREE.TorusGeometry(1.12,.03,10,48),ringM,coreRot,0,0,0,false); r1.rotation.x=Math.PI/3;
+ const r2=mesh(new THREE.TorusGeometry(1.12,.03,10,48),ringM,coreRot,0,0,0,false); r2.rotation.y=Math.PI/3;
+ coreHalo=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:0x86efac,transparent:true,opacity:.42,depthWrite:false,blending:THREE.AdditiveBlending}));
+ coreHalo.scale.setScalar(3.3); coreHalo.userData.noPick=true; coreRec.group.add(coreHalo);
+}
+
+/* --- 2. Brújula de autonomía (aro cardánico + aguja direccional) --- */
+const compassRec=part('brujula_autonomia',V(0,2.3,0),V(0,1.65,0));
+const compassPivot=new THREE.Group(); compassRec.group.add(compassPivot);
+const needleRot=new THREE.Group(); compassPivot.add(needleRot);
+{
+ const goldM=M({color:0xfde68a,emissive:0xf59e0b,emissiveIntensity:.25,metalness:.75,roughness:.28});
+ const bezel=mesh(new THREE.TorusGeometry(1.62,.055,12,64),goldM,compassPivot); bezel.rotation.x=Math.PI/2;
+ for(let i=0;i<8;i++){
+  const a=i/8*Math.PI*2;
+  mesh(new THREE.SphereGeometry(i%2===0?.07:.045,10,10),goldM,compassPivot,Math.cos(a)*1.62,0,Math.sin(a)*1.62,false);
+ }
+ /* Aguja de criterio propio */
+ const nNorth=M({color:0x86efac,emissive:0x4ade80,emissiveIntensity:.45,metalness:.4,roughness:.3});
+ const nSouth=M({color:0xfde68a,emissive:0xfbbf24,emissiveIntensity:.25,metalness:.4,roughness:.35});
+ const c1=mesh(new THREE.ConeGeometry(.11,.55,12),nNorth,needleRot,0,0,-1.35,false); c1.rotation.x=-Math.PI/2;
+ const c2=mesh(new THREE.ConeGeometry(.09,.45,12),nSouth,needleRot,0,0,1.35,false); c2.rotation.x=Math.PI/2;
+}
+
+/* --- 3. Escudo de bienestar emocional (cúpula geodésica translúcida) --- */
+const shieldRec=part('escudo_bienestar',V(0,2.3,0),V(0,3.4,0));
+let shieldMat,shieldWireMat;
+{
+ shieldMat=M({color:0x6ee7b7,emissive:0x34d399,emissiveIntensity:.16,metalness:.15,roughness:.2,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false},true);
+ mesh(new THREE.SphereGeometry(2.35,36,24),shieldMat,shieldRec.group,0,0,0,false);
+ shieldWireMat=M({color:0xa7f3d0,emissive:0x6ee7b7,emissiveIntensity:.28,wireframe:true,transparent:true,opacity:.22},true);
+ mesh(new THREE.IcosahedronGeometry(2.38,2),shieldWireMat,shieldRec.group,0,0,0,false);
+ const eq=mesh(new THREE.TorusGeometry(2.37,.025,8,72),M({color:0x86efac,emissive:0x6ee7b7,emissiveIntensity:.4}),shieldRec.group,0,0,0,false);
+ eq.rotation.x=Math.PI/2;
+}
+
+/* --- 4. Módulo de consulta de IA (satélite orbital con anillo de datos) --- */
+const aiRec=part('modulo_ia',V(3.25,2.55,0),V(2.3,1.2,0));
+const aiRot=new THREE.Group(); aiRec.group.add(aiRot);
+let aiCoreMat;
+{
+ const bodyM=M({color:0xfde68a,emissive:0xf59e0b,emissiveIntensity:.3,metalness:.65,roughness:.28});
+ mesh(new THREE.OctahedronGeometry(.58,0),bodyM,aiRot);
+ aiCoreMat=M({color:0xfef9c3,emissive:0xfde047,emissiveIntensity:.65,roughness:.2});
+ mesh(new THREE.SphereGeometry(.26,16,16),aiCoreMat,aiRot,0,0,0,false);
+ const halo=mesh(new THREE.TorusGeometry(.86,.03,10,48),bodyM,aiRot,0,0,0,false); halo.rotation.x=Math.PI/2.4;
+ const halo2=mesh(new THREE.TorusGeometry(.72,.022,8,40),M({color:0x86efac,emissive:0x4ade80,emissiveIntensity:.35}),aiRot,0,0,0,false); halo2.rotation.z=Math.PI/3;
+}
+
+/* --- 5. Filtro de verificación de fuentes (prisma superior + lentes) --- */
+const filterRec=part('filtro_fuentes',V(0,5.15,0),V(0,4.8,0));
+const filterRot=new THREE.Group(); filterRec.group.add(filterRot);
+let filterMat;
+{
+ filterMat=M({color:0x7dd3fc,emissive:0x38bdf8,emissiveIntensity:.35,metalness:.3,roughness:.18,transparent:true,opacity:.78});
+ const prism=mesh(new THREE.CylinderGeometry(.68,.68,.42,6),filterMat,filterRot); prism.rotation.x=Math.PI/2;
+ const frameM=M({color:0xbae6fd,emissive:0x7dd3fc,emissiveIntensity:.3,metalness:.75,roughness:.25});
+ mesh(new THREE.TorusGeometry(.88,.035,10,48),frameM,filterRot,0,0,0,false);
+ for(let i=0;i<3;i++){
+  const a=i/3*Math.PI*2;
+  mesh(new THREE.BoxGeometry(.08,.32,.08),frameM,filterRot,Math.cos(a)*.88,Math.sin(a)*.88,0,false).rotation.z=a+Math.PI/2;
+ }
+}
+
+/* --- 6. Medidor de descanso y sueño (columna de energía izquierda) --- */
+const restRec=part('medidor_descanso',V(-3.2,2.1,0),V(-2.3,1.1,0));
+let restFillMesh,restFillMat;
+{
+ const tubeM=M({color:0x334155,metalness:.5,roughness:.25,transparent:true,opacity:.38},true);
+ mesh(new THREE.CylinderGeometry(.38,.38,2.6,28),tubeM,restRec.group,0,0,0,false);
+ const capM=M({color:0xc4b5fd,emissive:0x8b5cf6,emissiveIntensity:.28,metalness:.65,roughness:.3});
+ mesh(new THREE.CylinderGeometry(.44,.44,.14,28),capM,restRec.group,0,1.35,0);
+ mesh(new THREE.CylinderGeometry(.44,.44,.14,28),capM,restRec.group,0,-1.35,0);
+ restFillMat=M({color:0xc4b5fd,emissive:0xa78bfa,emissiveIntensity:.5,roughness:.25});
+ restFillMesh=mesh(new THREE.CylinderGeometry(.3,.3,2.35,24),restFillMat,restRec.group,0,0,0,false);
+ /* Luna creciente decorativa en la cima */
+ const moon=mesh(new THREE.TorusGeometry(.2,.045,10,24,Math.PI*1.3),M({color:0xfde68a,emissive:0xfde68a,emissiveIntensity:.5}),restRec.group,0,1.72,0,false);
+ moon.rotation.z=.6;
+}
+
+/* --- 7. Indicador de comparación social (sensor frontal-lateral) --- */
+const compRec=part('indicador_comparacion',V(2.15,1.25,2.2),V(1.7,-.2,1.8));
+const compSpin=new THREE.Group(); compRec.group.add(compSpin);
+let compMat;
+{
+ compMat=M({color:0xfda4af,emissive:0xfb7185,emissiveIntensity:.28,metalness:.5,roughness:.32});
+ mesh(new THREE.DodecahedronGeometry(.44,0),compMat,compSpin);
+ const ring=mesh(new THREE.TorusGeometry(.66,.026,8,36),compMat,compSpin,0,0,0,false);
+ ring.rotation.x=Math.PI/4;
+}
+
+/* --- 8. Anillo de hábitos saludables (órbita base articulada) --- */
+const habitsRec=part('anillo_habitos',V(0,-.25,0),V(0,-1.25,0));
+const habitsRot=new THREE.Group(); habitsRec.group.add(habitsRot);
+{
+ const baseRingM=M({color:0x86efac,emissive:0x34d399,emissiveIntensity:.28,metalness:.55,roughness:.32});
+ const rMain=mesh(new THREE.TorusGeometry(3.35,.09,12,72),baseRingM,habitsRot); rMain.rotation.x=Math.PI/2;
+ const rInner=mesh(new THREE.TorusGeometry(2.75,.04,10,64),M({color:0xfde68a,emissive:0xfbbf24,emissiveIntensity:.25,metalness:.5,roughness:.35}),habitsRot,0,.08,0,false);
+ rInner.rotation.x=Math.PI/2;
+ const nodeColors=[0x86efac,0xfde68a,0x7dd3fc,0xc4b5fd,0xa7f3d0,0xfef08a];
+ for(let i=0;i<6;i++){
+  const a=i/6*Math.PI*2;
+  const nm=M({color:nodeColors[i],emissive:nodeColors[i],emissiveIntensity:.35,metalness:.4,roughness:.3});
+  mesh(new THREE.SphereGeometry(.17,16,14),nm,habitsRot,Math.cos(a)*3.35,0,Math.sin(a)*3.35);
+ }
+}
+
+/* --- Plataforma y pedestal ambiental (no son piezas seleccionables) --- */
+{
+ const plat=new THREE.Mesh(new THREE.CylinderGeometry(6.2,6.5,.14,64),
+  new THREE.MeshStandardMaterial({color:0x0b161c,roughness:.92,metalness:.15}));
+ plat.position.y=-1.45; plat.receiveShadow=true; scene.add(plat);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(6.0,.03,8,90),
+  new THREE.MeshStandardMaterial({color:0x86efac,emissive:0x6ee7b7,emissiveIntensity:.65,roughness:.4}));
+ ring.rotation.x=Math.PI/2; ring.position.y=-1.37; scene.add(ring);
+ const grid=new THREE.GridHelper(32,32,0x19313b,0x102027); grid.position.y=-1.51; scene.add(grid);
+ const ped=new THREE.Mesh(new THREE.CylinderGeometry(1.15,1.45,.65,32),
+  new THREE.MeshStandardMaterial({color:0x12222b,roughness:.65,metalness:.45}));
+ ped.position.y=-1.05; ped.castShadow=true; scene.add(ped);
+ const stripe=new THREE.Mesh(new THREE.TorusGeometry(1.3,.025,8,48),
+  new THREE.MeshStandardMaterial({color:0xfde68a,emissive:0xfde68a,emissiveIntensity:.45}));
+ stripe.rotation.x=Math.PI/2; stripe.position.y=-.82; scene.add(stripe);
+}
+
+/* Recopilar materiales por pieza (para resaltado) */
+for(const p of parts){
+ p.group.traverse(o=>{ if(o.isMesh && !o.userData.noHL){ o.userData.partId=p.id; if(!p.mats.includes(o.material)) p.mats.push(o.material);} });
+}
+const pickables=[];
+systemGroup.traverse(o=>{ if(o.isMesh && !o.userData.noPick) pickables.push(o); });
+
+/* ============================================================
+   PARTÍCULAS DE FLUJO COGNITIVO Y POLVO AMBIENTAL
+   ============================================================ */
+const cCore=V(0,2.3,0), cAI=V(3.25,2.55,0), cFilter=V(0,5.15,0), cRest=V(-3.2,2.1,0);
+const curveThink=new THREE.CatmullRomCurve3([cRest,V(-1.7,2.45,.7),cCore,V(1.6,2.1,-.6),V(0,1.2,0)]);
+const curveAI=new THREE.CatmullRomCurve3([cCore,V(1.6,3.1,.4),cAI,V(1.8,1.9,-.4),cCore]);
+const curveVerify=new THREE.CatmullRomCurve3([cAI,V(1.9,4.2,.2),cFilter,V(-.9,3.8,-.2),cCore]);
+const curveRest=new THREE.CatmullRomCurve3([cFilter,V(-1.9,4.0,.3),cRest,V(-1.7,1.4,-.3),cCore]);
+
+function makeFlow(curve,color,max,size,op){
+ const geo=new THREE.BufferGeometry();
+ const pos=new Float32Array(max*3); pos.fill(-999);
+ geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+ const mat=new THREE.PointsMaterial({map:softTex,color,size,transparent:true,opacity:op,depthWrite:false,blending:THREE.AdditiveBlending});
+ const pts=new THREE.Points(geo,mat); pts.frustumCulled=false; scene.add(pts);
+ return {curve,geo,pos,mat,list:[],max,acc:0,baseOp:op};
+}
+const flowThink=makeFlow(curveThink,0x86efac,75,.14,.88);
+const flowAI=makeFlow(curveAI,0xfde68a,75,.14,.88);
+const flowVerify=makeFlow(curveVerify,0x7dd3fc,75,.13,.85);
+const flowRest=makeFlow(curveRest,0xc4b5fd,75,.14,.85);
+
+function updateFlow(f,dt,weight,e){
+ const speedScale=.55+state.pace/18;
+ if(weight>.08 && state.playing && e<.45){
+  f.acc+=dt*(12+state.pace*.65)*weight;
+  while(f.acc>=1 && f.list.length<f.max){
+   f.acc--;
+   f.list.push({t:0,sp:.65+Math.random()*.45,jx:(Math.random()-.5)*.18,jy:(Math.random()-.5)*.18,jz:(Math.random()-.5)*.18});
+  }
+  if(f.acc>1) f.acc=1;
+ }
+ let n=0; const v=new THREE.Vector3();
+ for(let i=f.list.length-1;i>=0;i--){
+  const p=f.list[i]; p.t+=p.sp*speedScale*dt;
+  if(p.t>=1){ f.list.splice(i,1); continue; }
+  f.curve.getPointAt(p.t,v);
+  f.pos[n*3]=v.x+p.jx*Math.sin(p.t*Math.PI);
+  f.pos[n*3+1]=v.y+p.jy*Math.sin(p.t*Math.PI);
+  f.pos[n*3+2]=v.z+p.jz*Math.sin(p.t*Math.PI);
+  n++;
+ }
+ for(let i=n;i<f.max;i++) f.pos[i*3+1]=-999;
+ f.geo.setDrawRange(0,n); f.geo.attributes.position.needsUpdate=true;
+ f.mat.opacity=f.baseOp*(1-e*.85)*(0.25+0.75*weight);
+}
+
+/* Polvo luminoso ambiental */
+const DUST_MAX=120;
+const dustGeo=new THREE.BufferGeometry();
+const dustPos=new Float32Array(DUST_MAX*3); const dustSeed=[];
+for(let i=0;i<DUST_MAX;i++){ dustSeed.push({x:(Math.random()-.5)*16,y:-1.2+Math.random()*9.5,z:(Math.random()-.5)*16,s:Math.random()*6.28,v:.12+Math.random()*.22}); }
+dustGeo.setAttribute('position',new THREE.BufferAttribute(dustPos,3));
+const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({map:softTex,color:0xa7f3d0,size:.065,transparent:true,opacity:.32,depthWrite:false,blending:THREE.AdditiveBlending}));
+dust.frustumCulled=false; scene.add(dust);
+let dustCount=80;
+
+/* ============================================================
+   SONIDO PROCEDURAL AMBIENTAL Y DE TRANSICIÓN (WebAudio)
+   ============================================================ */
+const S={ctx:null,master:null,padOsc:null,padOsc2:null,padGain:null};
+function soundEnsure(){
+ if(!S.ctx){
+  try{
+   const ctx=new (window.AudioContext||window.webkitAudioContext)(); S.ctx=ctx;
+   S.master=ctx.createGain(); S.master.gain.value=state.sound?.42:0; S.master.connect(ctx.destination);
+   const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=320;
+   S.padGain=ctx.createGain(); S.padGain.gain.value=0;
+   S.padOsc=ctx.createOscillator(); S.padOsc.type='sine'; S.padOsc.frequency.value=110;
+   S.padOsc2=ctx.createOscillator(); S.padOsc2.type='triangle'; S.padOsc2.frequency.value=165;
+   S.padOsc.connect(lp); S.padOsc2.connect(lp); lp.connect(S.padGain); S.padGain.connect(S.master);
+   S.padOsc.start(); S.padOsc2.start();
+  }catch(e){}
+ }
+ if(S.ctx && S.ctx.state==='suspended') S.ctx.resume();
+}
+const PHASE_NOTES=[261.63,329.63,392.00,493.88]; // Do4, Mi4, Sol4, Si4 (acorde calmado)
+function soundChime(phaseIdx){
+ if(!S.ctx||!state.sound) return;
+ const ctx=S.ctx,t=ctx.currentTime;
+ const freq=PHASE_NOTES[phaseIdx%4]*(state.balance<.45?.84:1);
+ const o=ctx.createOscillator(); o.type='sine';
+ o.frequency.setValueAtTime(freq,t);
+ o.frequency.exponentialRampToValueAtTime(freq*1.015,t+.35);
+ const g=ctx.createGain();
+ g.gain.setValueAtTime(.0001,t);
+ g.gain.exponentialRampToValueAtTime(.18,t+.04);
+ g.gain.exponentialRampToValueAtTime(.0001,t+.55);
+ o.connect(g); g.connect(S.master); o.start(t); o.stop(t+.58);
+}
+function soundUpdate(){
+ if(!S.ctx) return;
+ const t=S.ctx.currentTime;
+ const baseFreq=state.balance<.45 ? 92+state.dependency*38 : 110+state.pace*.35;
+ S.padOsc.frequency.setTargetAtTime(baseFreq,t,.2);
+ S.padOsc2.frequency.setTargetAtTime(baseFreq*1.5,t,.2);
+ S.padGain.gain.setTargetAtTime(state.playing?.032:0,t,.2);
+}
+window.addEventListener('pointerdown',soundEnsure,{once:true});
+window.addEventListener('keydown',soundEnsure,{once:true});
+
+/* ============================================================
+   ETIQUETAS HTML + LÍNEAS GUÍA SVG
+   ============================================================ */
+const labelsLayer=$('#labelsLayer'),leaderSvg=$('#leaderSvg');
+const labelRecs=[];
+function addLabel(id,parent,local,dx,dy){
+ const anchor=new THREE.Object3D(); anchor.position.copy(local); parent.add(anchor);
+ const color=PARTS[id].color;
+ const pill=document.createElement('button'); pill.className='pill'; pill.style.setProperty('--pc',color);
+ pill.innerHTML=`<i></i>${PARTS[id].name}`; pill.dataset.part=id;
+ pill.addEventListener('click',ev=>{ev.stopPropagation(); selectPart(state.selected===id?null:id);});
+ labelsLayer.appendChild(pill);
+ const ns='http://www.w3.org/2000/svg';
+ const line=document.createElementNS(ns,'line'); line.setAttribute('stroke',color); line.setAttribute('stroke-width','1'); line.setAttribute('opacity','.58');
+ const dot=document.createElementNS(ns,'circle'); dot.setAttribute('r','3'); dot.setAttribute('fill',color);
+ leaderSvg.appendChild(line); leaderSvg.appendChild(dot);
+ labelRecs.push({id,anchor,pill,line,dot,dx,dy});
+}
+addLabel('nucleo_critico',coreRec.group,V(0,.2,0),-98,-26);
+addLabel('brujula_autonomia',compassRec.group,V(1.4,0,-.6),88,-32);
+addLabel('escudo_bienestar',shieldRec.group,V(-1.7,1.45,0),-92,-38);
+addLabel('modulo_ia',aiRec.group,V(0,.55,0),84,-24);
+addLabel('filtro_fuentes',filterRec.group,V(0,.55,0),0,-42);
+addLabel('medidor_descanso',restRec.group,V(0,1.1,0),-86,-28);
+addLabel('indicador_comparacion',compRec.group,V(0,-.4,0),78,34);
+addLabel('anillo_habitos',habitsRec.group,V(-2.4,0,2.1),-82,36);
+
+let vw=800,vh=600;
+const projV=new THREE.Vector3();
+function updateLabels(){
+ if(!state.labels){ labelsLayer.style.display='none'; return; }
+ labelsLayer.style.display='block';
+ for(const r of labelRecs){
+  r.anchor.getWorldPosition(projV); projV.project(camera);
+  const behind=projV.z>1;
+  const x=(projV.x*.5+.5)*vw, y=(-projV.y*.5+.5)*vh;
+  const off=behind||x<-80||x>vw+80||y<-50||y>vh+50;
+  r.pill.style.display=off?'none':'flex';
+  r.line.style.display=r.dot.style.display=off?'none':'block';
+  if(off) continue;
+  const px=x+r.dx, py=y+r.dy;
+  r.pill.style.transform=`translate(${px}px,${py}px) translate(-50%,-50%)`;
+  r.line.setAttribute('x1',x); r.line.setAttribute('y1',y); r.line.setAttribute('x2',px); r.line.setAttribute('y2',py);
+  r.dot.setAttribute('cx',x); r.dot.setAttribute('cy',y);
+  r.pill.classList.toggle('active',state.selected===r.id);
+ }
+}
+
+/* ============================================================
+   SELECCIÓN / RESALTADO DE PIEZAS
+   ============================================================ */
+const raycaster=new THREE.Raycaster(); const pointer=new THREE.Vector2();
+let pointerMoved=false,downPos=null,downTime=0;
+function restoreMats(rec){ for(const m of rec.mats){ m.emissive.setHex(m.userData.baseEmissive); m.emissiveIntensity=m.userData.baseEI; } }
+function selectPart(id){
+ if(state.selected){ const old=parts.find(p=>p.id===state.selected); if(old) restoreMats(old); }
+ state.selected=id;
+ document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',c.dataset.part===id));
+ const card=$('#infoCard');
+ if(id){
+  const p=PARTS[id];
+  card.style.setProperty('--ic',p.color);
+  $('#infoName').textContent=p.name; $('#infoDesc').textContent=p.desc;
+  card.classList.add('show');
+ }else card.classList.remove('show');
+}
+$('#infoClose').addEventListener('click',()=>selectPart(null));
+function pickAt(cx,cy){
+ const rect=renderer.domElement.getBoundingClientRect();
+ pointer.x=((cx-rect.left)/rect.width)*2-1; pointer.y=-((cy-rect.top)/rect.height)*2+1;
+ raycaster.setFromCamera(pointer,camera);
+ const hits=raycaster.intersectObjects(pickables,false);
+ for(const h of hits){
+  if(!h.object.visible) continue;
+  let o=h.object; while(o && !o.userData.partId) o=o.parent;
+  if(o) return o.userData.partId;
+ }
+ return null;
+}
+renderer.domElement.addEventListener('pointerdown',e=>{downPos=[e.clientX,e.clientY];downTime=performance.now();});
+renderer.domElement.addEventListener('pointerup',e=>{
+ if(!downPos) return;
+ const d=Math.hypot(e.clientX-downPos[0],e.clientY-downPos[1]);
+ if(d<6 && performance.now()-downTime<450){ const id=pickAt(e.clientX,e.clientY); selectPart(id===state.selected?null:id); }
+ downPos=null;
+});
+let lastMove=null;
+renderer.domElement.addEventListener('pointermove',e=>{lastMove=[e.clientX,e.clientY];pointerMoved=true;});
+function updateHover(t){
+ if(pointerMoved && lastMove){
+  pointerMoved=false;
+  const id=pickAt(lastMove[0],lastMove[1]);
+  if(id!==state.hovered){
+   if(state.hovered && state.hovered!==state.selected){ const old=parts.find(p=>p.id===state.hovered); if(old) restoreMats(old); }
+   state.hovered=id;
+   renderer.domElement.style.cursor=id?'pointer':'grab';
+   if(id && id!==state.selected){ const rec=parts.find(p=>p.id===id);
+    for(const m of rec.mats){ m.emissive.set(PARTS[id].color); m.emissiveIntensity=.28; } }
+  }
+ }
+ if(state.selected){
+  const rec=parts.find(p=>p.id===state.selected);
+  const pulse=.42+.24*Math.sin(t*5.2);
+  for(const m of rec.mats){ m.emissive.set(PARTS[state.selected].color); m.emissiveIntensity=pulse; }
+ }
+}
+
+/* ============================================================
+   INTERFAZ: CONTROLES Y SINCRONIZACIÓN
+   ============================================================ */
+function setRange(el){ el.style.setProperty('--p',((el.value-el.min)/(el.max-el.min)*100)+'%'); }
+document.querySelectorAll('input[type=range]').forEach(setRange);
+
+function syncPlayUI(){
+ $('#icPause').style.display=state.playing?'block':'none';
+ $('#icPlay').style.display=state.playing?'none':'block';
+ $('#playLabel').textContent=state.playing?'Pausar':'Reproducir';
+}
+$('#playBtn').addEventListener('click',()=>{state.playing=!state.playing;state.stepMode=false;syncPlayUI();});
+
+let progTween=null;
+function tweenProgress(to,dur,step=false){
+ state.stepMode=step; if(step){state.playing=false;syncPlayUI();}
+ progTween={from:state.progress,to,start:performance.now(),dur:dur*1000};
+}
+$('#stepBtn').addEventListener('click',()=>{
+ const next=(Math.floor(state.progress/25)+1)*25;
+ tweenProgress(next>=100?99.99:next,.95,true);
+ toast('Avanzando a la siguiente fase del proceso');
+});
+document.querySelectorAll('.tl-seg').forEach(b=>b.addEventListener('click',()=>{
+ tweenProgress(parseInt(b.dataset.i)*25+.05,.65,false);
+}));
+
+$('#paceSlider').addEventListener('input',e=>{
+ state.pace=parseInt(e.target.value); setRange(e.target);
+ $('#paceOut').textContent=state.pace+' ciclos/h';
+ $('#paceTxt').textContent=state.pace+' ciclos/h';
+});
+
+function updateBalanceMetrics(){
+ const depPct=Math.round(state.dependency*100);
+ const out=$('#depOut');
+ if(depPct<=35){ out.textContent=`${depPct}% (Uso consciente)`; out.className='mint'; }
+ else if(depPct<=68){ out.textContent=`${depPct}% (Delegación alta)`; out.className='lemon'; }
+ else { out.textContent=`${depPct}% (Sobrecarga / fatiga)`; out.className='coral'; }
+
+ /* En la fase 4 (Pausa y bienestar), el sistema recupera equilibrio */
+ const phaseRecovery=(state.progress>=75)?0.18*((state.progress-75)/25):0;
+ state.balance=clamp(1-state.dependency*0.85+phaseRecovery,0.12,0.98);
+ const balPct=Math.round(state.balance*100);
+ $('#balOut').textContent=balPct+'%';
+ $('#balFill').style.width=balPct+'%';
+ $('#autoTxt').textContent=Math.round(clamp(100-depPct*0.8,15,96))+'%';
+}
+
+$('#depSlider').addEventListener('input',e=>{
+ state.dependency=parseInt(e.target.value)/100; setRange(e.target);
+ updateBalanceMetrics();
+});
+
+function syncExplodeUI(){
+ const armed=state.explodeTarget>.5;
+ $('#explodeBtn').classList.toggle('armed',armed);
+ $('#explodeBtn').setAttribute('aria-pressed',armed);
+ $('#explodeLabel').textContent=armed?'ARMAR ECOSISTEMA':'DESPIECE DE CAPAS';
+}
+$('#explodeBtn').addEventListener('click',()=>{
+ const to=state.explodeTarget>.5?0:1;
+ if(to===1){ state.wasPlaying=state.playing; state.playing=false; syncPlayUI(); toast('Capas separadas para explorar cada elemento'); }
+ else { state.playing=state.wasPlaying; syncPlayUI(); toast('Ecosistema integrado de nuevo'); }
+ state.explodeTarget=to; syncExplodeUI();
+});
+$('#sepSlider').addEventListener('input',e=>{
+ const v=parseInt(e.target.value)/100; setRange(e.target);
+ state.explode=v; state.explodeTarget=v;
+ $('#sepOut').textContent=Math.round(v*100)+'%'; syncExplodeUI();
+});
+
+function applyXray(){
+ for(const m of xrayMats){
+  m.opacity=state.xray?m.userData.baseOpacity:Math.min(.82,m.userData.baseOpacity*2.6);
+  m.needsUpdate=true;
+ }
+}
+$('#xrayToggle').addEventListener('change',e=>{state.xray=e.target.checked;applyXray();toast(state.xray?'Vista Rayos X activada':'Capas opacas activadas');});
+$('#labelsToggle').addEventListener('change',e=>{state.labels=e.target.checked;});
+$('#rotToggle').addEventListener('change',e=>{state.autoRot=e.target.checked;controls.autoRotate=state.autoRot;});
+
+function applyQuality(){
+ const q=state.quality;
+ const dpr=q==='alta'?Math.min(devicePixelRatio,2):q==='media'?Math.min(devicePixelRatio,1.5):1;
+ renderer.setPixelRatio(dpr); composer.setPixelRatio(dpr);
+ bloom.enabled=q!=='baja'; bloom.strength=q==='alta'?.52:.42;
+ const sh=q!=='baja'; renderer.shadowMap.enabled=sh; key.castShadow=sh;
+ const size=q==='alta'?2048:1024;
+ if(key.shadow.map){key.shadow.map.dispose();key.shadow.map=null;}
+ key.shadow.mapSize.set(size,size);
+ dustCount=q==='alta'?120:q==='media'?80:40;
+ for(const m of allMats) m.needsUpdate=true;
+ resize();
+}
+$('#qualitySel').addEventListener('change',e=>{state.quality=e.target.value;applyQuality();toast('Calidad: '+e.target.selectedOptions[0].text);});
+
+/* Cámara */
+let camTween=null;
+function camTo(pos,target,dur=.9){
+ camTween={fp:camera.position.clone(),tp:pos.clone(),ft:controls.target.clone(),tt:target.clone(),start:performance.now(),dur:dur*1000};
+}
+controls.addEventListener('start',()=>{camTween=null;});
+const explodeY=()=>2.2+1.6*state.explode;
+const views={
+ front:()=>camTo(V(0,explodeY()+.8,12.5+6.5*state.explode),V(0,explodeY(),0)),
+ side:()=>camTo(V(12.5+6.5*state.explode,explodeY()+1,.5),V(0,explodeY(),0)),
+ top:()=>camTo(V(.4,explodeY()+13.5+5*state.explode,.4),V(0,explodeY(),0)),
+ iso:()=>camTo(V(7.4,explodeY()+2.6,10.2+5.5*state.explode),V(0,explodeY(),0))
+};
+document.querySelectorAll('.cam-btn').forEach(b=>b.addEventListener('click',()=>views[b.dataset.view]()));
+$('#centerBtn').addEventListener('click',()=>views.iso());
+$('#randomBtn').addEventListener('click',()=>{
+ const az=Math.random()*Math.PI*2,pol=.35+Math.random()*.9,d=9.5+Math.random()*7+6*state.explode;
+ const ty=explodeY();
+ camTo(V(Math.sin(az)*Math.sin(pol)*d,ty+Math.cos(pol)*d,Math.cos(az)*Math.sin(pol)*d),V(0,ty,0));
+ toast('¡Vista sorpresa! 🎲');
+});
+
+/* Sonido / pantalla completa */
+function syncSoundUI(){
+ $('#soundBtn').classList.toggle('off',!state.sound);
+ $('#soundBtn').setAttribute('aria-pressed',state.sound);
+ $('#soundLabel').textContent=state.sound?'Sonido':'Silencio';
+ if(S.ctx) S.master.gain.setTargetAtTime(state.sound?.42:0,S.ctx.currentTime,.05);
+}
+$('#soundBtn').addEventListener('click',()=>{soundEnsure();state.sound=!state.sound;syncSoundUI();toast(state.sound?'Sonido activado 🔊':'Sonido silenciado 🔇');});
+$('#fsBtn').addEventListener('click',()=>{
+ try{ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }catch(e){}
+});
+
+/* Reiniciar / captura */
+$('#resetBtn').addEventListener('click',resetAll);
+function resetAll(){
+ state.progress=0;state.cycles=0;state.pace=12;state.dependency=0.25;state.playing=true;state.stepMode=false;
+ state.explode=0;state.explodeTarget=0;state.xray=true;state.labels=true;state.autoRot=false;
+ progTween=null; selectPart(null);
+ $('#paceSlider').value=12;setRange($('#paceSlider'));$('#paceOut').textContent='12 ciclos/h';$('#paceTxt').textContent='12 ciclos/h';
+ $('#depSlider').value=25;setRange($('#depSlider'));updateBalanceMetrics();
+ $('#sepSlider').value=0;setRange($('#sepSlider'));$('#sepOut').textContent='0%';
+ $('#xrayToggle').checked=true;$('#labelsToggle').checked=true;$('#rotToggle').checked=false;
+ controls.autoRotate=false; applyXray(); syncPlayUI(); syncExplodeUI();
+ camTo(V(7.4,4.8,10.2),V(0,2.2,0));
+ toast('Simulador reiniciado ⟳');
+}
+$('#shotBtn').addEventListener('click',()=>{
+ try{
+  const a=document.createElement('a'); a.download='mente-digital-equilibrio-ia.png';
+  a.href=renderer.domElement.toDataURL('image/png'); a.click();
+  const f=$('#flash'); f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),180);
+  toast('Imagen PNG descargada 📸');
+ }catch(e){ toast('No se pudo generar la captura'); }
+});
+
+/* Leyenda */
+{
+ const lg=$('#legend');
+ for(const id of LEGEND_ORDER){
+  const b=document.createElement('button'); b.className='chip'; b.dataset.part=id;
+  b.style.setProperty('--pc',PARTS[id].color);
+  b.innerHTML=`<i></i><span>${PARTS[id].name}</span>`;
+  b.addEventListener('click',()=>selectPart(state.selected===id?null:id));
+  lg.appendChild(b);
+ }
+}
+
+/* Atajos de teclado */
+window.addEventListener('keydown',e=>{
+ if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+ switch(e.key){
+  case ' ': e.preventDefault(); $('#playBtn').click(); break;
+  case 'e': case 'E': $('#explodeBtn').click(); break;
+  case 'ArrowRight': $('#stepBtn').click(); break;
+  case 'c': case 'C': $('#xrayToggle').checked=!$('#xrayToggle').checked; $('#xrayToggle').dispatchEvent(new Event('change')); break;
+  case 'l': case 'L': $('#labelsToggle').checked=!$('#labelsToggle').checked; $('#labelsToggle').dispatchEvent(new Event('change')); break;
+  case 'r': case 'R': resetAll(); break;
+  case 'Escape': selectPart(null); break;
+ }
+});
+
+/* ============================================================
+   HUD (insignia, tarjeta, línea de tiempo)
+   ============================================================ */
+let lastPhase=-1;
+const segEls=[...document.querySelectorAll('.tl-seg')];
+function updatePhaseUI(i){
+ const s=PHASES[i];
+ const badge=$('#phaseBadge');
+ badge.style.setProperty('--sc',s.color);
+ $('#badgeNum').textContent=i+1;
+ $('#badgeNameText').textContent=s.name.toUpperCase();
+ $('#badgeSub').textContent=`Fase ${i+1} de 4 · ${s.motion}`;
+ badge.classList.remove('pop'); void badge.offsetWidth; badge.classList.add('pop');
+ const card=$('#phaseCard'); card.style.setProperty('--sc',s.color);
+ $('#scNum').textContent=i+1; $('#scName').textContent=s.name; $('#scSub').textContent=s.sub;
+ $('#scDesc').textContent=s.desc; $('#scTip').textContent=s.tip;
+ segEls.forEach((el,j)=>{ el.classList.toggle('active',j===i); el.classList.toggle('done',j<i); });
+ if(lastPhase!==-1) soundChime(i);
+ lastPhase=i;
+}
+
+function updateHUD(){
+ const p=state.progress,i=Math.floor(p/25)%4;
+ if(i!==lastPhase) updatePhaseUI(i);
+ updateBalanceMetrics();
+ const intra=(p%25)/25;
+ segEls[i].querySelector('.tl-fill').style.transform=`scaleX(${intra})`;
+ $('#tlMarker').style.left=p+'%';
+ $('#progTxt').textContent=Math.round(p)+'%';
+ $('#cyclesTxt').textContent=state.cycles;
+
+ const tag=$('#stateTag'), statusTxt=$('#statusTxt');
+ if(state.balance>=0.65){
+  tag.textContent='EQUILIBRIO ÓPTIMO'; tag.style.background='#86efac'; statusTxt.textContent='Armónico';
+ }else if(state.balance>=0.40){
+  tag.textContent='TENSIÓN COGNITIVA'; tag.style.background='#fde68a'; statusTxt.textContent='Delegación alta';
+ }else{
+  tag.textContent='SOBRECARGA DIGITAL'; tag.style.background='#fda4af'; statusTxt.textContent='Desequilibrado';
+ }
+}
+
+/* ============================================================
+   CINEMÁTICA DEL EQUILIBRIO Y BUCLE PRINCIPAL
+   ============================================================ */
+function setProgress(v){
+ const prev=state.progress;
+ v=((v%100)+100)%100;
+ if(prev>v) state.cycles++;
+ state.progress=v;
+}
+
+const cMint=new THREE.Color(0x86efac);
+const cLemon=new THREE.Color(0xfde68a);
+const cCoral=new THREE.Color(0xfda4af);
+const cLavender=new THREE.Color(0xc4b5fd);
+const tmpV=new THREE.Vector3();
+
+function applyKinematics(t){
+ const e=smooth(clamp(state.explode,0,1));
+ const p=state.progress;
+ const phaseIdx=Math.floor(p/25)%4;
+ const bal=state.balance;
+ const stress=1-bal; // 0 = equilibrio pleno, 1 = sobrecarga
+
+ /* Separación de capas por despiece */
+ for(const item of parts){
+  item.group.position.copy(item.base).addScaledVector(item.offset,e);
+ }
+
+ /* Flotación orgánica sutil en cada componente */
+ coreRec.group.position.y+=Math.sin(t*1.8)*.06*(1-e);
+ aiRec.group.position.y+=Math.sin(t*2.1+1)*.11*(1-e);
+ filterRec.group.position.y+=Math.cos(t*1.6)*.07*(1-e);
+ restRec.group.position.y+=Math.sin(t*1.5+2)*.08*(1-e);
+
+ /* 1. Núcleo de pensamiento crítico: pulsa fuerte en fase 1 y 4; se atenúa si hay sobrecarga */
+ const coreBoost=(phaseIdx===0?1.35:phaseIdx===3?1.2:0.95)*bal;
+ coreRot.rotation.y=t*(0.45+bal*0.4);
+ coreRot.rotation.x=Math.sin(t*.7)*.18;
+ const pulseScale=1+Math.sin(t*(2.8+stress*5))*(0.04+stress*0.04);
+ coreRot.scale.setScalar(pulseScale);
+ if(state.selected!=='nucleo_critico' && state.hovered!=='nucleo_critico'){
+  coreMat.color.lerpColors(cCoral,cMint,bal);
+  coreMat.emissive.lerpColors(cCoral,cMint,bal);
+  coreMat.emissiveIntensity=0.25+coreBoost*0.65;
+ }
+ coreHalo.material.color.lerpColors(cCoral,cMint,bal);
+ coreHalo.material.opacity=(0.22+coreBoost*0.32)*(1-e*.6);
+ coreHalo.scale.setScalar(2.7+coreBoost*0.9);
+
+ /* 2. Brújula de autonomía: estable cuando hay equilibrio; oscila con inestabilidad en sobrecarga */
+ compassPivot.rotation.z=Math.sin(t*3.2)*stress*0.42;
+ compassPivot.rotation.x=Math.cos(t*2.7)*stress*0.28;
+ needleRot.rotation.y=Math.sin(t*1.2)*(0.12+stress*1.4);
+
+ /* 3. Escudo de bienestar emocional: respira en calma y cambia de color si hay desgaste */
+ const shieldBreath=1+Math.sin(t*1.6)*0.025;
+ shieldRec.group.scale.setScalar(shieldBreath);
+ if(state.selected!=='escudo_bienestar' && state.hovered!=='escudo_bienestar'){
+  shieldMat.color.lerpColors(cCoral,cMint,bal);
+  shieldMat.emissive.lerpColors(cCoral,cMint,bal);
+  shieldMat.emissiveIntensity=(phaseIdx===3?.34:.14)*bal+.05;
+ }
+
+ /* 4. Módulo de consulta de IA: se acerca y acelera cuando aumenta la dependencia o en fase 2 */
+ const aiOrbitAngle=t*(0.55+state.dependency*1.4);
+ const aiRadius=lerp(3.35,2.35,state.dependency)*(1-e)+e*5.55;
+ aiRec.group.position.x=Math.cos(aiOrbitAngle)*aiRadius;
+ aiRec.group.position.z=Math.sin(aiOrbitAngle)*aiRadius;
+ aiRot.rotation.y=-t*(1.1+state.dependency*2.2);
+ aiRot.rotation.z=Math.sin(t*2)*.25;
+ if(state.selected!=='modulo_ia' && state.hovered!=='modulo_ia'){
+  aiCoreMat.emissiveIntensity=(phaseIdx===1?1.15:0.45)+state.dependency*0.65;
+ }
+
+ /* 5. Filtro de verificación de fuentes: gira y brilla más en fase 3 */
+ filterRot.rotation.y=t*(phaseIdx===2?1.8:.55);
+ if(state.selected!=='filtro_fuentes' && state.hovered!=='filtro_fuentes'){
+  filterMat.emissiveIntensity=phaseIdx===2?.85:.28;
+ }
+
+ /* 6. Medidor de descanso y sueño: nivel sube con el equilibrio y en fase 4 */
+ const restLevel=clamp(bal*(phaseIdx===3?1.08:.95),0.15,1);
+ restFillMesh.scale.y=restLevel;
+ restFillMesh.position.y=-1.175*(1-restLevel);
+ if(state.selected!=='medidor_descanso' && state.hovered!=='medidor_descanso'){
+  restFillMat.color.lerpColors(cCoral,cLavender,restLevel);
+  restFillMat.emissive.lerpColors(cCoral,cLavender,restLevel);
+  restFillMat.emissiveIntensity=phaseIdx===3?.85:.42;
+ }
+
+ /* 7. Indicador de comparación social: crece y vibra cuando sube la sobrecarga */
+ compSpin.rotation.y=t*(0.7+stress*2.8);
+ compSpin.rotation.x=t*(0.5+stress*1.9);
+ compSpin.scale.setScalar(0.85+stress*0.55);
+ if(state.selected!=='indicador_comparacion' && state.hovered!=='indicador_comparacion'){
+  compMat.emissiveIntensity=0.2+stress*0.95;
+ }
+
+ /* 8. Anillo de hábitos saludables */
+ habitsRot.rotation.y=t*(0.28+bal*0.25);
+
+ /* Luz central dinámica */
+ eventLight.color.lerpColors(cCoral,phaseIdx===1?cLemon:cMint,bal);
+ eventLight.intensity=1.6+coreBoost*1.4;
+
+ /* Actualizar puntos extremos de las curvas dinámicas hacia el módulo de IA */
+ curveAI.points[2].copy(aiRec.group.position);
+ curveVerify.points[0].copy(aiRec.group.position);
+
+ return {phaseIdx,e};
+}
+
+/* Redimensionado */
+function resize(){
+ const r=wrap.getBoundingClientRect();
+ vw=Math.max(1,r.width); vh=Math.max(1,r.height);
+ renderer.setSize(vw,vh,false); composer.setSize(vw,vh);
+ camera.aspect=vw/vh; camera.updateProjectionMatrix();
+ leaderSvg.setAttribute('viewBox',`0 0 ${vw} ${vh}`);
+}
+new ResizeObserver(resize).observe(wrap);
+resize(); applyQuality(); updateBalanceMetrics();
+
+/* Entrada cinematográfica */
+camTo(V(7.4,4.8,10.2),V(0,2.2,0),1.5);
+setTimeout(()=>{const h=$('#hintChip'); if(h) h.style.opacity=.48;},10000);
+
+const clock=new THREE.Clock();
+let firstFrame=true,lastSep=-1;
+
+renderer.setAnimationLoop(()=>{
+ const dt=Math.min(clock.getDelta(),.05);
+ const t=clock.elapsedTime;
+ const now=performance.now();
+
+ /* Tween de progreso (paso a paso / salto en línea de tiempo) */
+ if(progTween){
+  const k=clamp((now-progTween.start)/progTween.dur,0,1);
+  setProgress(lerp(progTween.from,progTween.to,easeIO(k)));
+  if(k>=1){ progTween=null; state.stepMode=false; }
+ }else if(state.playing){
+  setProgress(state.progress+(state.pace/60)*4.2*dt);
+ }
+
+ /* Despiece + encuadre suave de cámara */
+ const prevE=state.explode;
+ state.explode+=(state.explodeTarget-state.explode)*Math.min(1,dt*3.2);
+ if(Math.abs(state.explode-state.explodeTarget)<.001) state.explode=state.explodeTarget;
+ if(Math.abs(state.explode-prevE)>.0004 && !camTween){
+  const ty=2.2+1.6*state.explode;
+  controls.target.y+=(ty-controls.target.y)*Math.min(1,dt*3);
+  const want=12.5+6.5*state.explode;
+  tmpV.copy(camera.position).sub(controls.target);
+  const d=tmpV.length(),nd=lerp(d,want,Math.min(1,dt*2.2));
+  camera.position.copy(controls.target).addScaledVector(tmpV.normalize(),nd);
+ }
+ if(Math.abs(state.explode-lastSep)>.004){
+  lastSep=state.explode;
+  const pct=Math.round(state.explode*100);
+  $('#sepSlider').value=pct; setRange($('#sepSlider')); $('#sepOut').textContent=pct+'%';
+ }
+
+ /* Tween de cámara */
+ if(camTween){
+  const k=clamp((now-camTween.start)/camTween.dur,0,1),ek=easeIO(k);
+  camera.position.lerpVectors(camTween.fp,camTween.tp,ek);
+  controls.target.lerpVectors(camTween.ft,camTween.tt,ek);
+  if(k>=1) camTween=null;
+ }
+ controls.update();
+
+ const {phaseIdx,e}=applyKinematics(t);
+ updateFlow(flowThink,dt,phaseIdx===0?1:.22,e);
+ updateFlow(flowAI,dt,phaseIdx===1?1:(0.18+state.dependency*.6),e);
+ updateFlow(flowVerify,dt,phaseIdx===2?1:.18,e);
+ updateFlow(flowRest,dt,phaseIdx===3?1:.22,e);
+
+ /* Polvo ambiental */
+ for(let i=0;i<dustCount;i++){ const s=dustSeed[i];
+  dustPos[i*3]=s.x+Math.sin(t*s.v+s.s)*.65;
+  dustPos[i*3+1]=s.y+Math.sin(t*s.v*.7+s.s*2)*.5;
+  dustPos[i*3+2]=s.z+Math.cos(t*s.v*.5+s.s)*.65;
+ }
+ dustGeo.setDrawRange(0,dustCount); dustGeo.attributes.position.needsUpdate=true;
+
+ updateHover(t);
+ updateLabels();
+ updateHUD();
+ soundUpdate();
+
+ if(state.quality==='baja') renderer.render(scene,camera);
+ else composer.render();
+
+ if(firstFrame){ firstFrame=false; $('#loader').classList.add('done'); }
+});
+
+syncPlayUI(); syncExplodeUI(); syncSoundUI(); updatePhaseUI(0);
+} /* fin init */
+</script>
+</body>
+</html>
